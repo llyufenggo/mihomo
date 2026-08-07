@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"strconv"
 	"strings"
 	"time"
@@ -468,7 +467,7 @@ func parseVlessAddr(metadata *C.Metadata, xudp bool) *vless.DstAddr {
 func NewVless(option VlessOption) (*Vless, error) {
 	// 🚀 清除首尾空格
 	option.UUID = strings.TrimSpace(option.UUID)
-	
+
 	// ================= [保留你之前的 #sl 魔改] =================
 	if strings.HasSuffix(option.UUID, "#sl") {
 		option.UUID = strings.TrimSuffix(option.UUID, "#sl")
