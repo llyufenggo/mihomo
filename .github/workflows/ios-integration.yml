@@ -28,7 +28,7 @@ jobs:
           git diff --exit-code -- go.mod go.sum
 
       - name: Test affected packages
-        run: go test ./adapter/outbound ./config
+        run: go test ./adapter ./adapter/outbound ./config
 
       - name: Vet affected packages
-        run: go vet ./adapter/outbound ./config
+        run: go vet ./adapter ./adapter/outbound ./config
