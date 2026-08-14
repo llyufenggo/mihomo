@@ -33,6 +33,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type blackstoneCloser interface {
+	Close() error
+}
+
+func replaceBlackstoneResource[T blackstoneCloser](previous, next T) (T, error) {
+	if err := previous.Close(); err != nil {
+		return previous, err
+	}
+	return next, nil
+}
+
 var (
 	blackstonePrivKey = []byte("NiKNssxJcXp7Mh4yjjFGdrcFoC66wcVu5j1LgBevGCm8utV4qg089xdb20tAKu")
 	blackstonePubKey  = []byte("jMJaXZXGc1CbTri1UnRdvJ3izp8f0jGhXGr2jjr9nMkBKUZDoh3Avoijc4jQUw")
@@ -213,23 +224,37 @@ func (h *Blackstone) lazyInit(ctx context.Context) error {
 	}
 
 	h.bestCfg = best
+	var nextSSOutbound C.ProxyAdapter
 	if best.Type == "ss" {
 		portInt, err := strconv.Atoi(best.Port)
 		if err != nil || portInt < 1 || portInt > 65535 {
 			return fmt.Errorf("invalid dynamic Shadowsocks port %q", best.Port)
 		}
 		ssOpt := ShadowSocksOption{
-			BasicOption: h.option.BasicOption, 
+			BasicOption: h.option.BasicOption,
 			Name:        h.option.Name + "_ss",
 			Server:      best.Server,
 			Port:        portInt,
 			Password:    best.Password + "#BLACKSTONE",
 			Cipher:      best.Cipher,
 		}
-		h.ssOutbound, h.initErr = NewShadowSocks(ssOpt)
+		nextSSOutbound, h.initErr = NewShadowSocks(ssOpt)
 		if h.initErr != nil {
 			return h.initErr
 		}
+	}
+	if h.ssOutbound != nil {
+		current, err := replaceBlackstoneResource(h.ssOutbound, nextSSOutbound)
+		if err != nil {
+			if nextSSOutbound != nil {
+				_ = nextSSOutbound.Close()
+			}
+			h.initErr = fmt.Errorf("close previous blackstone outbound: %w", err)
+			return h.initErr
+		}
+		h.ssOutbound = current
+	} else {
+		h.ssOutbound = nextSSOutbound
 	}
 
 	h.isInit = true
@@ -365,7 +390,20 @@ func (h *Blackstone) ListenPacketContext(ctx context.Context, metadata *C.Metada
 }
 
 func (h *Blackstone) SupportUOT() bool { return false }
-func (h *Blackstone) Close() error     { return nil }
+
+func (h *Blackstone) Close() error {
+	h.initMu.Lock()
+	defer h.initMu.Unlock()
+	if h.ssOutbound == nil {
+		return nil
+	}
+	err := h.ssOutbound.Close()
+	if err == nil {
+		h.ssOutbound = nil
+		h.isInit = false
+	}
+	return err
+}
 
 
 // ========================
