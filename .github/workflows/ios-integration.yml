@@ -1,0 +1,34 @@
+name: iOS Custom Dependency Tests
+
+on:
+  push:
+    branches:
+      - ios-integration
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.5'
+          cache-dependency-path: go.sum
+
+      - name: Verify module graph
+        run: |
+          go mod download
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Test affected packages
+        run: go test ./adapter/outbound ./config
+
+      - name: Vet affected packages
+        run: go vet ./adapter/outbound ./config

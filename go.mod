@@ -2,6 +2,8 @@ module github.com/metacubex/mihomo
 
 go 1.20
 
+replace github.com/metacubex/sing-shadowsocks2 => github.com/llyufeng/sing-shadowsocks2-meta v0.0.0-20260814152028-98c4afa30d95
+
 require (
 	github.com/bahlo/generic-list-go v0.2.0
 	github.com/coreos/go-iptables v0.8.0
