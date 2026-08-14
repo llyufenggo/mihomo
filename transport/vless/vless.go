@@ -44,6 +44,7 @@ type DstAddr struct {
 type Client struct {
 	uuid   uuid.UUID
 	Addons *Addons
+	x365   bool
 }
 
 // StreamConn return a Conn with net.Conn and DstAddr
@@ -57,10 +58,20 @@ func (c *Client) PacketConn(conn net.Conn, rAddr net.Addr) net.PacketConn {
 
 // NewClient return Client instance
 func NewClient(uuidStr string, addons *Addons) (*Client, error) {
+	return newClient(uuidStr, addons, false)
+}
+
+// NewX365Client returns a VLESS-derived client using the X365 wire format.
+func NewX365Client(uuidStr string, addons *Addons) (*Client, error) {
+	return newClient(uuidStr, addons, true)
+}
+
+func newClient(uuidStr string, addons *Addons, x365 bool) (*Client, error) {
 	uid := utils.UUIDMap(uuidStr)
 
 	return &Client{
 		uuid:   uid,
 		Addons: addons,
+		x365:   x365,
 	}, nil
 }

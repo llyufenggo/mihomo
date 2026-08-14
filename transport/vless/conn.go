@@ -21,6 +21,7 @@ type Conn struct {
 	addons   *Addons
 	received bool
 	sent     bool
+	x365     bool
 }
 
 func (vc *Conn) Read(b []byte) (int, error) {
@@ -68,6 +69,36 @@ func (vc *Conn) WriteBuffer(buffer *buf.Buffer) error {
 }
 
 func (vc *Conn) sendRequest(p []byte) (err error) {
+	if vc.x365 {
+		requestLen := 5 + 1 + 16
+		if !vc.dst.Mux {
+			requestLen += 2 + 1 + len(vc.dst.Addr)
+		}
+		requestLen += len(p)
+
+		buffer := buf.NewSize(requestLen)
+		defer buffer.Release()
+		buf.Must(buf.Error(buffer.Write([]byte{'X', '3', '6', '5', 0x01})))
+		if vc.dst.Mux {
+			buf.Must(buffer.WriteByte(CommandMux))
+		} else if vc.dst.UDP {
+			buf.Must(buffer.WriteByte(CommandUDP))
+		} else {
+			buf.Must(buffer.WriteByte(CommandTCP))
+		}
+		buf.Must(buf.Error(buffer.Write(vc.id.Bytes())))
+		if !vc.dst.Mux {
+			binary.BigEndian.PutUint16(buffer.Extend(2), vc.dst.Port)
+			buf.Must(
+				buffer.WriteByte(vc.dst.AddrType),
+				buf.Error(buffer.Write(vc.dst.Addr)),
+			)
+		}
+		buf.Must(buf.Error(buffer.Write(p)))
+		_, err = vc.ExtendedConn.Write(buffer.Bytes())
+		return err
+	}
+
 	var addonsBytes []byte
 	if vc.addons != nil {
 		addonsBytes, err = proto.Marshal(vc.addons)
@@ -121,6 +152,17 @@ func (vc *Conn) sendRequest(p []byte) (err error) {
 }
 
 func (vc *Conn) recvResponse() (err error) {
+	if vc.x365 {
+		var header [5]byte
+		if _, err = io.ReadFull(vc.ExtendedConn, header[:]); err != nil {
+			return err
+		}
+		if header != [5]byte{'X', '3', '6', '5', 0x01} {
+			return errors.New("invalid x365 response header")
+		}
+		return nil
+	}
+
 	var buffer [2]byte
 	_, err = io.ReadFull(vc.ExtendedConn, buffer[:])
 	if err != nil {
@@ -162,6 +204,7 @@ func newConn(conn net.Conn, client *Client, dst *DstAddr) (net.Conn, error) {
 		id:           client.uuid,
 		addons:       client.Addons,
 		dst:          dst,
+		x365:         client.x365,
 	}
 
 	if client.Addons != nil {
