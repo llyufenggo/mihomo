@@ -459,6 +459,9 @@ func parseVlessAddr(metadata *C.Metadata, xudp bool) *vless.DstAddr {
 }
 
 func NewVless(option VlessOption) (*Vless, error) {
+	var x365 bool
+	option.UUID, x365 = parseVlessUUIDMode(option.UUID)
+
 	var addons *vless.Addons
 	if len(option.Flow) >= 16 {
 		option.Flow = option.Flow[:16]
@@ -483,7 +486,16 @@ func NewVless(option VlessOption) (*Vless, error) {
 		option.PacketAddr = false
 	}
 
-	client, err := vless.NewClient(option.UUID, addons)
+	if x365 && addons != nil {
+		return nil, errors.New("x365 does not support VLESS flow addons")
+	}
+	var client *vless.Client
+	var err error
+	if x365 {
+		client, err = vless.NewX365Client(option.UUID, addons)
+	} else {
+		client, err = vless.NewClient(option.UUID, addons)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -908,4 +920,13 @@ func NewVless(option VlessOption) (*Vless, error) {
 	}
 
 	return v, nil
+}
+
+func parseVlessUUIDMode(rawUUID string) (cleaned string, x365 bool) {
+	cleaned = strings.TrimSpace(rawUUID)
+	const marker = "#x365"
+	if len(cleaned) >= len(marker) && strings.EqualFold(cleaned[len(cleaned)-len(marker):], marker) {
+		return strings.TrimSpace(cleaned[:len(cleaned)-len(marker)]), true
+	}
+	return cleaned, false
 }
