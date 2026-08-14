@@ -24,7 +24,7 @@ jobs:
 
       - name: Verify module graph
         run: |
-          go mod download
+          go mod download github.com/metacubex/sing-shadowsocks2
           git diff --exit-code -- go.mod go.sum
 
       - name: Test affected packages
