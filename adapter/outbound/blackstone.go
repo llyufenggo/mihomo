@@ -214,7 +214,10 @@ func (h *Blackstone) lazyInit(ctx context.Context) error {
 
 	h.bestCfg = best
 	if best.Type == "ss" {
-		portInt, _ := strconv.Atoi(best.Port)
+		portInt, err := strconv.Atoi(best.Port)
+		if err != nil || portInt < 1 || portInt > 65535 {
+			return fmt.Errorf("invalid dynamic Shadowsocks port %q", best.Port)
+		}
 		ssOpt := ShadowSocksOption{
 			BasicOption: h.option.BasicOption, 
 			Name:        h.option.Name + "_ss",
@@ -261,13 +264,25 @@ func (h *Blackstone) DialContext(ctx context.Context, metadata *C.Metadata) (C.C
 	}
 	part1Str := strings.TrimSpace(passParts[0])
 	part2Hex := passParts[1]
-	decodedHmacKey, _ := hex.DecodeString(part2Hex)
+	decodedHmacKey, err := hex.DecodeString(part2Hex)
+	if err != nil {
+		rawConn.Close()
+		return nil, fmt.Errorf("invalid blackstone HMAC key: %w", err)
+	}
+	if len(decodedHmacKey) == 0 {
+		rawConn.Close()
+		return nil, errors.New("invalid blackstone HMAC key: empty key")
+	}
 	hmacLen := len(decodedHmacKey)
 	handshakeLen := 128 + 16 + hmacLen + 1 + 16
 	ivLenOffset := 144 + hmacLen
 
 	clientHandshake := make([]byte, handshakeLen)
-	decodedTcp, _ := hex.DecodeString(h.bestCfg.TcpFake)
+	decodedTcp, err := hex.DecodeString(h.bestCfg.TcpFake)
+	if err != nil {
+		rawConn.Close()
+		return nil, fmt.Errorf("invalid blackstone fake TCP header: %w", err)
+	}
 	
 	copyLen := len(decodedTcp)
 	if copyLen > 128 {
@@ -275,7 +290,10 @@ func (h *Blackstone) DialContext(ctx context.Context, metadata *C.Metadata) (C.C
 	}
 	copy(clientHandshake[0:copyLen], decodedTcp[:copyLen])
 	if copyLen < 128 {
-		_, _ = rand.Read(clientHandshake[copyLen:128])
+		if _, err := rand.Read(clientHandshake[copyLen:128]); err != nil {
+			rawConn.Close()
+			return nil, fmt.Errorf("generate blackstone handshake padding: %w", err)
+		}
 	}
 	
 	tokenMD5 := md5.Sum([]byte(part1Str + "do not hack this protocol please"))
@@ -284,10 +302,17 @@ func (h *Blackstone) DialContext(ctx context.Context, metadata *C.Metadata) (C.C
 
 	clientHandshake[ivLenOffset] = 0x10
 	clientWriteIV := clientHandshake[ivLenOffset+1 : handshakeLen]
-	_, _ = rand.Read(clientWriteIV)
+	if _, err := rand.Read(clientWriteIV); err != nil {
+		rawConn.Close()
+		return nil, fmt.Errorf("generate blackstone IV: %w", err)
+	}
 
 	aesKey := md5.Sum([]byte(part1Str))
-	block, _ := aes.NewCipher(aesKey[:])
+	block, err := aes.NewCipher(aesKey[:])
+	if err != nil {
+		rawConn.Close()
+		return nil, fmt.Errorf("create blackstone cipher: %w", err)
+	}
 	encryptStream := cipher.NewCTR(block, clientWriteIV)
 
 	var destBuf bytes.Buffer
@@ -422,13 +447,22 @@ func (h *Blackstone) fetchDynamicConfig(ctx context.Context, nodeID, token strin
 		"id":              nodeID,
 		"strategy":        "smart",
 	}
-	reqJson, _ := json.Marshal(reqMap)
+	reqJson, err := json.Marshal(reqMap)
+	if err != nil {
+		return nil, fmt.Errorf("encode blackstone request: %w", err)
+	}
 	encryptedReq := h.encryptRequestData(string(reqJson))
 
 	payloadMap := map[string]string{"data": encryptedReq}
-	payloadJson, _ := json.Marshal(payloadMap)
+	payloadJson, err := json.Marshal(payloadMap)
+	if err != nil {
+		return nil, fmt.Errorf("encode blackstone payload: %w", err)
+	}
 
-	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(payloadJson))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(payloadJson))
+	if err != nil {
+		return nil, fmt.Errorf("create blackstone request: %w", err)
+	}
 	req.Host = "g.just4test.xyz"
 	req.Header.Set("content-type", "application/json")
 	req.Header.Set("x-version", "520")
@@ -455,7 +489,10 @@ func (h *Blackstone) fetchDynamicConfig(ctx context.Context, nodeID, token strin
 	}
 	defer resp.Body.Close()
 
-	bodyBytes, _ := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read blackstone API response: %w", err)
+	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("api returned status: %d", resp.StatusCode)
 	}
@@ -467,7 +504,11 @@ func (h *Blackstone) fetchDynamicConfig(ctx context.Context, nodeID, token strin
 		return h.processApiData(encryptedB64)
 	}
 
-	return h.processApiData(jsonResp["data"].(string))
+	encryptedData, ok := jsonResp["data"].(string)
+	if !ok || encryptedData == "" {
+		return nil, errors.New("API response data must be a non-empty string")
+	}
+	return h.processApiData(encryptedData)
 }
 
 func (h *Blackstone) processApiData(encryptedB64 string) ([]blackstoneRealConfig, error) {
@@ -483,21 +524,38 @@ func (h *Blackstone) processApiData(encryptedB64 string) ([]blackstoneRealConfig
 		rawB64[i] ^= blackstonePrivKey[i%len(blackstonePrivKey)]
 	}
 	if bytes.HasPrefix(rawB64, []byte("\x1f\x8b")) {
-		gr, _ := gzip.NewReader(bytes.NewReader(rawB64))
-		rawB64, _ = io.ReadAll(gr)
-		gr.Close()
+		gr, err := gzip.NewReader(bytes.NewReader(rawB64))
+		if err != nil {
+			return nil, fmt.Errorf("invalid outer gzip data: %w", err)
+		}
+		decompressed, readErr := io.ReadAll(gr)
+		closeErr := gr.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("read outer gzip data: %w", readErr)
+		}
+		if closeErr != nil {
+			return nil, fmt.Errorf("close outer gzip data: %w", closeErr)
+		}
+		rawB64 = decompressed
 	}
 
 	var layer1 map[string]interface{}
-	json.Unmarshal(rawB64, &layer1)
-	if layer1["data"] == nil {
-		return nil, errors.New("decrypted data field is missing")
+	if err := json.Unmarshal(rawB64, &layer1); err != nil {
+		return nil, fmt.Errorf("invalid outer JSON: %w", err)
+	}
+	dataObj, ok := layer1["data"].(map[string]interface{})
+	if !ok {
+		return nil, errors.New("decrypted data field must be an object")
+	}
+	smartB64, ok := dataObj["smart"].(string)
+	if !ok || smartB64 == "" {
+		return nil, errors.New("decrypted smart field must be a non-empty string")
 	}
 
-	dataObj := layer1["data"].(map[string]interface{})
-	smartB64 := dataObj["smart"].(string)
-
-	smartRaw, _ := base64.StdEncoding.DecodeString(smartB64)
+	smartRaw, err := base64.StdEncoding.DecodeString(smartB64)
+	if err != nil {
+		return nil, fmt.Errorf("decode smart data: %w", err)
+	}
 	smartPlain, err := h.decryptBlackstonePayload(smartRaw)
 	if err != nil {
 		return nil, err
@@ -506,7 +564,9 @@ func (h *Blackstone) processApiData(encryptedB64 string) ([]blackstoneRealConfig
 	var smartData struct {
 		Proxies []map[string]interface{} `yaml:"proxies"`
 	}
-	yaml.Unmarshal(smartPlain, &smartData)
+	if err := yaml.Unmarshal(smartPlain, &smartData); err != nil {
+		return nil, fmt.Errorf("decode smart YAML: %w", err)
+	}
 
 	var realConfigs []blackstoneRealConfig
 	for _, proxy := range smartData.Proxies {
