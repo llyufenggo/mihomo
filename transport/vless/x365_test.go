@@ -79,6 +79,32 @@ func TestX365ResponseRejectsInvalidHeader(t *testing.T) {
 	}
 }
 
+func TestX365ResponseKeepsLegacyFifthByteCompatibility(t *testing.T) {
+	client, err := NewX365Client(x365FixtureUUID, nil)
+	if err != nil {
+		t.Fatalf("NewX365Client: %v", err)
+	}
+	clientSide, serverSide := net.Pipe()
+	defer clientSide.Close()
+	defer serverSide.Close()
+	conn, err := client.StreamConn(clientSide, x365FixtureDestination())
+	if err != nil {
+		t.Fatalf("StreamConn: %v", err)
+	}
+	go func() {
+		_, _ = serverSide.Write([]byte{'X', '3', '6', '5', 0x7f})
+		_, _ = serverSide.Write([]byte{0x42})
+	}()
+	buffer := make([]byte, 1)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		t.Fatalf("legacy X365 response was rejected: %v", err)
+	}
+	if n != 1 || buffer[0] != 0x42 {
+		t.Fatalf("unexpected X365 payload: n=%d data=%x", n, buffer[:n])
+	}
+}
+
 func TestStandardVLESSRequestRemainsUnchanged(t *testing.T) {
 	client, err := NewClient(x365FixtureUUID, nil)
 	if err != nil {

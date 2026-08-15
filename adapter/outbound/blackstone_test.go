@@ -2,6 +2,7 @@ package outbound
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -50,5 +51,39 @@ func TestProcessAPIDataRejectsInvalidOuterJSON(t *testing.T) {
 	_, err := handler.processApiData(fixture)
 	if err == nil || !strings.Contains(err.Error(), "outer JSON") {
 		t.Fatalf("unexpected invalid JSON error: %v", err)
+	}
+}
+
+func decodeBlackstoneHeaderFixture(t *testing.T, encoded string) map[string]any {
+	t.Helper()
+	raw, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		t.Fatalf("decode header: %v", err)
+	}
+	for index := range raw {
+		raw[index] ^= blackstonePubKey[index%len(blackstonePubKey)]
+	}
+	var header map[string]any
+	if err := json.Unmarshal(raw, &header); err != nil {
+		t.Fatalf("decode header JSON: %v", err)
+	}
+	return header
+}
+
+func TestBlackstoneHeaderPreservesLegacyServiceIdentity(t *testing.T) {
+	handler := &Blackstone{option: &BlackstoneOption{NodeID: "must-not-leak"}}
+	header := decodeBlackstoneHeaderFixture(t, handler.buildXHeader("fixture-token"))
+	expected := map[string]string{
+		"X-DEVICE-NAME":  "Lenovo - Lenovo TB-J606F",
+		"X-IDENTIFIER":   "ed7295e154b50905",
+		"X-TIMESTAMP":    "1779367490",
+		"X-CHECK-MOBILE": `{"isRoot":true,"isEmulator":false,"bundleID":"com.heysocks.android"}`,
+		"X-OS-VERSION":   "30",
+		"X-TOKEN":        "fixture-token",
+	}
+	for key, value := range expected {
+		if header[key] != value {
+			t.Fatalf("legacy header %s changed: got=%v want=%q", key, header[key], value)
+		}
 	}
 }
