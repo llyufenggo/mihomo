@@ -93,8 +93,8 @@ github.com/klauspost/reedsolomon v1.12.3/go.mod h1:3K5rXwABAvzGeR01r6pWZieUALXO/
 github.com/kr/pretty v0.1.0 h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
-github.com/llyufeng/sing-shadowsocks2-meta v0.0.0-20260814152028-98c4afa30d95 h1:PUGKPwvWNf0gZchF07TIMCciHXbW0SGdgY6Ump2yWI0=
-github.com/llyufeng/sing-shadowsocks2-meta v0.0.0-20260814152028-98c4afa30d95/go.mod h1:vOEbfKC60txi0ca+yUlqEwOGc3Obl6cnSgx9Gf45KjE=
+github.com/llyufenggo/sing-shadowsocks2-meta v0.0.0-20260815042426-e7efd668b39b h1:4azxkQy5Zr/zF+87CjDHcg0k+mBHo3P4DfGMfYMtd2U=
+github.com/llyufenggo/sing-shadowsocks2-meta v0.0.0-20260815042426-e7efd668b39b/go.mod h1:vOEbfKC60txi0ca+yUlqEwOGc3Obl6cnSgx9Gf45KjE=
 github.com/mdlayher/netlink v1.7.2 h1:/UtM3ofJap7Vl4QWCPDGXY8d3GIY2UGSDbK+QWmY8/g=
 github.com/mdlayher/netlink v1.7.2/go.mod h1:xraEF7uJbxLhc5fpHL4cPe221LI2bdttWlU+ZGLfQSw=
 github.com/mdlayher/socket v0.5.1 h1:VZaqt6RkGkt2OE9l3GcC6nZkqD3xKeQLyfleW/uBcos=
