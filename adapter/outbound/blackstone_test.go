@@ -87,3 +87,13 @@ func TestBlackstoneHeaderPreservesLegacyServiceIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestBlackstoneTLSConfigPreservesPinnedIPCompatibility(t *testing.T) {
+	config := blackstoneTLSConfig()
+	if config.ServerName != "g.just4test.xyz" {
+		t.Fatalf("unexpected Blackstone SNI: %q", config.ServerName)
+	}
+	if !config.InsecureSkipVerify {
+		t.Fatal("pinned-IP Blackstone API must preserve legacy certificate handling")
+	}
+}
