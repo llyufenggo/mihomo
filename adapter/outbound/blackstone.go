@@ -700,12 +700,12 @@ func (h *Blackstone) crackCertificate(certPem string) (blackstoneRealConfig, err
 
 func (h *Blackstone) buildXHeader(token string) string {
 	headerMap := map[string]interface{}{
-		"X-DEVICE-NAME":     "FlClash",
-		"X-IDENTIFIER":      h.option.NodeID,
+		"X-DEVICE-NAME":     "Lenovo - Lenovo TB-J606F",
+		"X-IDENTIFIER":      "ed7295e154b50905",
 		"X-TOKEN":           token,
-		"X-TIMESTAMP":       strconv.FormatInt(time.Now().Unix(), 10),
-		"X-CHECK-MOBILE":    `{"isRoot":false,"isEmulator":false,"bundleID":"com.follow.clash.llyufeng"}`,
-		"X-OS-VERSION":      "ios",
+		"X-TIMESTAMP":       "1779367490",
+		"X-CHECK-MOBILE":    `{"isRoot":true,"isEmulator":false,"bundleID":"com.heysocks.android"}`,
+		"X-OS-VERSION":      "30",
 	}
 	headerJson, _ := json.Marshal(headerMap)
 	return h.encryptRequestData(string(headerJson))

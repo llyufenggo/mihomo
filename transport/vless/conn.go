@@ -157,7 +157,7 @@ func (vc *Conn) recvResponse() (err error) {
 		if _, err = io.ReadFull(vc.ExtendedConn, header[:]); err != nil {
 			return err
 		}
-		if header != [5]byte{'X', '3', '6', '5', 0x01} {
+		if header[0] != 'X' || header[1] != '3' || header[2] != '6' || header[3] != '5' {
 			return errors.New("invalid x365 response header")
 		}
 		return nil
