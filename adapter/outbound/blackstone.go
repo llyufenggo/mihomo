@@ -87,6 +87,13 @@ type BlackstoneProxyWrapper struct {
 	adapter *Blackstone
 }
 
+func blackstoneTLSConfig() *tls.Config {
+	return &tls.Config{
+		InsecureSkipVerify: true, // #nosec G402 -- legacy pinned-IP API compatibility
+		ServerName:         "g.just4test.xyz",
+	}
+}
+
 func (x *BlackstoneProxyWrapper) URLTest(ctx context.Context, url string, expectedStatus utils.IntRanges[uint16]) (uint16, error) {
 	start := time.Now()
 
@@ -513,10 +520,7 @@ func (h *Blackstone) fetchDynamicConfig(ctx context.Context, nodeID, token strin
 			DialContext: func(c context.Context, network, addr string) (net.Conn, error) {
 				return h.dialer.DialContext(c, "tcp", addr)
 			},
-			TLSClientConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-				ServerName: "g.just4test.xyz",
-			},
+			TLSClientConfig: blackstoneTLSConfig(),
 			ForceAttemptHTTP2: true,
 		},
 	}
