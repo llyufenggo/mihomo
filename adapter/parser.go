@@ -111,6 +111,13 @@ func ParseProxy(mapping map[string]any, options ...ProxyOption) (C.Proxy, error)
 			break
 		}
 		proxy, err = outbound.NewTuic(*tuicOption)
+	case "shadowquic":
+		shadowQuicOption := &outbound.ShadowQuicOption{BasicOption: basicOption}
+		err = decoder.Decode(mapping, shadowQuicOption)
+		if err != nil {
+			break
+		}
+		proxy, err = outbound.NewShadowQuic(*shadowQuicOption)
 	case "gost-relay":
 		relayOption := &outbound.GostRelayOption{BasicOption: basicOption}
 		err = decoder.Decode(mapping, relayOption)
@@ -139,6 +146,13 @@ func ParseProxy(mapping map[string]any, options ...ProxyOption) (C.Proxy, error)
 			break
 		}
 		proxy = outbound.NewRejectWithOption(*rejectOption)
+	case "rematch":
+		rematchOption := &outbound.RematchOption{BasicOption: basicOption}
+		err = decoder.Decode(mapping, rematchOption)
+		if err != nil {
+			break
+		}
+		proxy, err = outbound.NewRematch(*rematchOption)
 	case "ssh":
 		sshOption := &outbound.SshOption{BasicOption: basicOption}
 		err = decoder.Decode(mapping, sshOption)
@@ -205,8 +219,18 @@ func ParseProxy(mapping map[string]any, options ...ProxyOption) (C.Proxy, error)
 		if err != nil {
 			return nil, err
 		}
-		// 套上测速壳并返回
 		return outbound.NewXHttpProxyWrapper(NewProxy(raw), raw), nil
+	case "blackstone":
+		blackstoneOption := &outbound.BlackstoneOption{BasicOption: basicOption}
+		err = decoder.Decode(mapping, blackstoneOption)
+		if err != nil {
+			break
+		}
+		raw, err := outbound.NewBlackstone(*blackstoneOption)
+		if err != nil {
+			return nil, err
+		}
+		return outbound.NewBlackstoneProxyWrapper(NewProxy(raw), raw), nil
 	default:
 		return nil, fmt.Errorf("unsupport proxy type: %s", proxyType)
 	}

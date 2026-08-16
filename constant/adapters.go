@@ -22,6 +22,7 @@ const (
 	Compatible
 	Pass
 	PassRule
+	Rematch
 	Dns
 
 	Relay
@@ -48,9 +49,11 @@ const (
 	Sudoku
 	Masque
 	TrustTunnel
+	ShadowQuic
 	OpenVPN
 	Tailscale
 	GostRelay
+	Blackstone
 	XHttp
 )
 
@@ -188,6 +191,8 @@ func (at AdapterType) String() string {
 		return "Pass"
 	case PassRule:
 		return "PassRule"
+	case Rematch:
+		return "Rematch"
 	case Dns:
 		return "Dns"
 	case Shadowsocks:
@@ -226,13 +231,17 @@ func (at AdapterType) String() string {
 		return "Masque"
 	case TrustTunnel:
 		return "TrustTunnel"
+	case ShadowQuic:
+		return "ShadowQuic"
 	case OpenVPN:
 		return "OpenVPN"
 	case Tailscale:
 		return "Tailscale"
 	case GostRelay:
 		return "GostRelay"
-	case XHttp:           // 👈 添加这 2 行
+	case Blackstone:
+		return "Blackstone"
+	case XHttp:
 		return "XHttp"
 	case Relay:
 		return "Relay"
