@@ -496,16 +496,7 @@ func NewVless(option VlessOption) (*Vless, error) {
 		option.PacketAddr = false
 	}
 
-	if x365 && addons != nil {
-		return nil, errors.New("x365 does not support VLESS flow addons")
-	}
-	var client *vless.Client
-	var err error
-	if x365 {
-		client, err = vless.NewX365Client(option.UUID, addons)
-	} else {
-		client, err = vless.NewClient(option.UUID, addons)
-	}
+	client, err := vless.NewClient(option.UUID, addons, x365)
 	if err != nil {
 		return nil, err
 	}
