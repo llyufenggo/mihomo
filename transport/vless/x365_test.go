@@ -106,7 +106,7 @@ func TestX365ResponseKeepsLegacyFifthByteCompatibility(t *testing.T) {
 }
 
 func TestStandardVLESSRequestRemainsUnchanged(t *testing.T) {
-	client, err := NewClient(x365FixtureUUID, nil)
+	client, err := NewClient(x365FixtureUUID, nil, false)
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}

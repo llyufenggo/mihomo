@@ -209,17 +209,6 @@ func ParseProxy(mapping map[string]any, options ...ProxyOption) (C.Proxy, error)
 			break
 		}
 		proxy, err = outbound.NewTailscale(*tailscaleOption)
-	case "xhttp":
-		xhttpOption := &outbound.XHttpOption{BasicOption: basicOption}
-		err = decoder.Decode(mapping, xhttpOption)
-		if err != nil {
-			break
-		}
-		raw, err := outbound.NewXHttp(*xhttpOption)
-		if err != nil {
-			return nil, err
-		}
-		return outbound.NewXHttpProxyWrapper(NewProxy(raw), raw), nil
 	case "blackstone":
 		blackstoneOption := &outbound.BlackstoneOption{BasicOption: basicOption}
 		err = decoder.Decode(mapping, blackstoneOption)

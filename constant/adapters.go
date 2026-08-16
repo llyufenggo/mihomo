@@ -54,7 +54,6 @@ const (
 	Tailscale
 	GostRelay
 	Blackstone
-	XHttp
 )
 
 const (
@@ -241,8 +240,6 @@ func (at AdapterType) String() string {
 		return "GostRelay"
 	case Blackstone:
 		return "Blackstone"
-	case XHttp:
-		return "XHttp"
 	case Relay:
 		return "Relay"
 	case Selector:
