@@ -19,7 +19,7 @@ func x365FixtureDestination() *DstAddr {
 }
 
 func TestX365RequestWireFormat(t *testing.T) {
-	client, err := NewX365Client(x365FixtureUUID, nil)
+	client, err := NewClient(x365FixtureUUID, nil, true)
 	if err != nil {
 		t.Fatalf("NewX365Client: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestX365RequestWireFormat(t *testing.T) {
 }
 
 func TestX365ResponseRejectsInvalidHeader(t *testing.T) {
-	client, err := NewX365Client(x365FixtureUUID, nil)
+	client, err := NewClient(x365FixtureUUID, nil, true)
 	if err != nil {
 		t.Fatalf("NewX365Client: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestX365ResponseRejectsInvalidHeader(t *testing.T) {
 }
 
 func TestX365ResponseKeepsLegacyFifthByteCompatibility(t *testing.T) {
-	client, err := NewX365Client(x365FixtureUUID, nil)
+	client, err := NewClient(x365FixtureUUID, nil, true)
 	if err != nil {
 		t.Fatalf("NewX365Client: %v", err)
 	}
