@@ -2,7 +2,7 @@ module github.com/metacubex/mihomo
 
 go 1.20
 
-replace github.com/metacubex/sing-shadowsocks2 => github.com/llyufenggo/sing-shadowsocks2-meta v0.0.0-20260815042426-e7efd668b39b
+replace github.com/metacubex/sing-shadowsocks2 => ../sing-shadowsocks2
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0
