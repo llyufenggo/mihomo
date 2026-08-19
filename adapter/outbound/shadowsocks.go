@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
+	"time"
 
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/structure"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/ntp"
 	gost "github.com/metacubex/mihomo/transport/gost"
 	"github.com/metacubex/mihomo/transport/jls"
@@ -28,7 +31,8 @@ type ShadowSocks struct {
 	*Base
 	method shadowsocks.Method
 
-	option *ShadowSocksOption
+	option    *ShadowSocksOption
+	viewTurbo bool
 	// obfs
 	obfsMode        string
 	obfsOption      *simpleObfsOption
@@ -215,7 +219,22 @@ func (ss *ShadowSocks) dialContext(ctx context.Context) (c net.Conn, err error) 
 	if ss.kcptunClient != nil {
 		return ss.kcptunClient.OpenStream(ctx, ss.listenPacketContext)
 	}
-	return ss.dialer.DialContext(ctx, "tcp", ss.addr)
+	startedAt := time.Now()
+	if ss.viewTurbo {
+		log.Infoln("[ViewTurbo] phase=tcp_dial result=begin")
+	}
+	c, err = ss.dialer.DialContext(ctx, "tcp", ss.addr)
+	if ss.viewTurbo && err != nil {
+		log.Infoln(
+			"[ViewTurbo] phase=tcp_dial result=failure duration_ms=%d error=%s",
+			time.Since(startedAt).Milliseconds(),
+			viewTurboErrorClass(err),
+		)
+	}
+	if err == nil && ss.viewTurbo {
+		c = wrapViewTurboDiagnosticConn(c)
+	}
+	return c, err
 }
 
 // DialContext implements C.ProxyAdapter
@@ -511,6 +530,7 @@ func NewShadowSocks(option ShadowSocksOption) (*ShadowSocks, error) {
 		method: method,
 
 		option:          &option,
+		viewTurbo:       strings.HasSuffix(strings.ToUpper(option.Password), "#VT"),
 		obfsMode:        obfsMode,
 		v2rayOption:     v2rayOption,
 		gostOption:      gostOption,
