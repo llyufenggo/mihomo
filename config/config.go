@@ -877,6 +877,14 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	proxiesConfig := cfg.Proxy
 	groupsConfig := cfg.ProxyGroup
 	providersConfig := cfg.ProxyProvider
+	viewTurboRecognized, shadowsocksCount := viewTurboMarkerSummary(proxiesConfig)
+	if shadowsocksCount > 0 {
+		log.Infoln(
+			"[ViewTurbo] phase=config_marker recognized=%d shadowsocks=%d",
+			viewTurboRecognized,
+			shadowsocksCount,
+		)
+	}
 
 	var (
 		proxyList  []string
