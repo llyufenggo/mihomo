@@ -78,6 +78,7 @@ var _ P.Tunnel = Tunnel
 var _ proxydialer.Tunnel = Tunnel
 
 func (t tunnel) HandleTCPConn(conn net.Conn, metadata *C.Metadata) {
+	recordTunTCPIn()
 	connCtx := icontext.NewConnContext(conn, metadata)
 	handleTCPConn(connCtx)
 }
@@ -97,6 +98,7 @@ func initUDP() {
 }
 
 func (t tunnel) HandleUDPPacket(packet C.UDPPacket, metadata *C.Metadata) {
+	recordTunUDPIn()
 	udpInit.Do(initUDP)
 
 	packetAdapter := C.NewPacketAdapter(packet, metadata)
@@ -463,6 +465,7 @@ func handleUDPConn(packet C.PacketAdapter) {
 				log.Warnln("[UDP] Parse metadata failed: %s", err.Error())
 				return nil, nil, err
 			}
+			recordDispatchResolved()
 
 			dialMetadata := metadata.Pure()
 			ctx, cancel := context.WithTimeout(context.Background(), C.DefaultUDPTimeout)
@@ -475,6 +478,7 @@ func handleUDPConn(packet C.PacketAdapter) {
 			if err != nil {
 				return nil, nil, err
 			}
+			recordDispatchDial(true)
 			logMetadata(metadata, rule, rawPc)
 
 			pc := statistic.NewUDPTracker(rawPc, statistic.DefaultManager, metadata, rule, 0, 0, true)
@@ -557,6 +561,7 @@ func handleTCPConn(connCtx C.ConnContext) {
 		log.Warnln("[Metadata] parse failed: %s", err.Error())
 		return
 	}
+	recordDispatchResolved()
 
 	dialMetadata := metadata
 	if len(metadata.Host) > 0 {
@@ -609,8 +614,10 @@ func handleTCPConn(connCtx C.ConnContext) {
 		logMetadataErr(metadata, rule, proxy, err)
 	})
 	if err != nil {
+		recordDispatchDial(false)
 		return
 	}
+	recordDispatchDial(true)
 	logMetadata(metadata, rule, remoteConn)
 
 	remoteConn = statistic.NewTCPTracker(remoteConn, statistic.DefaultManager, metadata, rule, int64(peekLen), 0, true)
